@@ -19,6 +19,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+if ($category->slug === 'uncategorized') {
+	return;
+}
+
 ?>
 <li <?php wc_product_cat_class( '', $category ); ?>>
 	<?php
@@ -41,7 +45,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 	 *
 	 * @hooked woocommerce_template_loop_category_title - 10
 	 */
-	do_action( 'woocommerce_shop_loop_subcategory_title', $category );
+	?>
+	<div class="woocommerce-loop-category__title">
+		<h3><?php echo esc_html($category->name); ?></h3>
+		<?php echo apply_filters('woocommerce_subcategory_count_html', ' <mark class="count">' . esc_html($category->count) . ' goods</mark>', $category); ?>
+	</div>
+	<?php
 
 	/**
 	 * The woocommerce_after_subcategory_title hook.
