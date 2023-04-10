@@ -25,4 +25,11 @@ if ( ! wc_review_ratings_enabled() ) {
 	return;
 }
 
-echo wc_get_rating_html( $product->get_average_rating() ); // WordPress.XSS.EscapeOutput.OutputNotEscaped.
+$rating = $product->get_average_rating();
+
+$rating_html = '<div class="star-rating" title="' . sprintf(esc_html__('Rated %s out of 5', 'wordtrap'), $rating) . '">';
+
+$rating_html .= '<span style="width:' . (($rating / 5) * 100) . '%"><strong class="rating">' . $rating . '</strong> ' . esc_html__('out of 5', 'wordtrap') . '</span>';
+
+$rating_html .= '</div>';
+echo $rating_html;

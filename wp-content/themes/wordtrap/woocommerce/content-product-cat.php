@@ -22,6 +22,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 if ($category->slug === 'uncategorized') {
 	return;
 }
+$image_id = get_term_meta($category->term_id, 'thumbnail_id', true);
+
+if ($image_id) {
+	// category has an image associated with it
+	$image_url = wp_get_attachment_url($image_id);
+	$is_default_image = (strpos($image_url, '/wp-includes/images/') !== false);
+	if ($is_default_image) {
+		return;
+	}
+} else {
+	return;
+}
 
 ?>
 <li <?php wc_product_cat_class( '', $category ); ?>>

@@ -23,138 +23,118 @@ function wordtrap_site_theme_enqueue_styles() {
 }
 add_action( 'wp_enqueue_scripts', 'wordtrap_site_theme_enqueue_styles', 99 );
 
-function my_custom_product_categories_widget_args($args)
-{
-	$args['title'] = 'My Custom Categories'; // Change the widget title
-	$args['orderby'] = 'name'; // Sort categories by name
-	$args['order'] = 'ASC'; // Sort categories in ascending order
-	$args['show_count'] = true; // Show the number of products in each category
-	$args['hide_empty'] = false; // Show empty categories
-	$args['depth'] = 2; // Limit the category hierarchy to 2 levels
-	return $args;
-}
-add_filter('woocommerce_product_categories_widget_args', 'my_custom_product_categories_widget_args');
+if ( ! class_exists( 'WT_Woocommerce' ) ) :
+	class WT_Woocommerce {
+	
+		protected static $_instance = null;
+	
+		public function __construct() {
+			add_action( 'init', array( &$this, 'init' ) );
 
-function my_custom_elementor_woocommerce_product_categories_widget($content, $widget)
-{
-	if ('woocommerce-product-categories' === $widget->get_name()) {
-		$args = $widget->get_settings();
-		$args['title'] = 'My Custom Categories'; // Change the widget title
-		$args['orderby'] = 'name'; // Sort categories by name
-		$args['order'] = 'ASC'; // Sort categories in ascending order
-		$args['show_count'] = true; // Show the number of products in each category
-		$args['hide_empty'] = false; // Show empty categories
-		$args['depth'] = 2; // Limit the category hierarchy to 2 levels
-		$content = $widget->render_content($args);
+		}
+
+		public static function instance()
+		{
+			if (is_null(self::$_instance)) {
+				self::$_instance = new self();
+			}
+			return self::$_instance;
+		}
+
+		public function init()
+		{
+			if (!defined('WOOCOMMERCE_VERSION')) {
+				return;
+			}
+
+			/** to change the position of rating **/
+			remove_action( 'woocommerce_after_shop_loop_item', 'woocommerce_template_loop_product_link_close', 5 );
+
+			remove_action('woocommerce_before_shop_loop_item_title', 'woocommerce_template_loop_product_thumbnail', 10);
+			add_action('woocommerce_before_shop_loop_item_title', array(&$this, 'template_loop_product_thumbnail'), 10);
+			add_action('woocommerce_before_shop_loop_item_title', array(&$this, 'template_loop_product_frist_thumbnail'), 11);
+		}
+		public function template_loop_product_thumbnail() {
+			$frist = $this->_product_get_frist_thumbnail();
+			echo '<div class="shop-loop-thumbnail'.(apply_filters('wt_use_template_loop_product_frist_thumbnail', true) && $frist != '' ? ' shop-loop-front-thumbnail':'').'">' . woocommerce_get_product_thumbnail() . '</div>';
+		}
+
+		public function template_loop_product_frist_thumbnail() {
+			if ( ( $frist = $this->_product_get_frist_thumbnail() ) != '' ) {
+				echo '<div class="shop-loop-thumbnail shop-loop-back-thumbnail">' . $frist . '</div>';
+			}
+		}
+
+		public function template_loop_wishlist()
+		{
+			if ($this->_yith_wishlist_is_active()) {
+				echo do_shortcode('[yith_wcwl_add_to_wishlist]');
+			}
+			return;
+		}
+
+		public function yith_wishlist_is_active()
+		{
+			return $this->_yith_wishlist_is_active();
+		}
+
+		protected function _yith_wishlist_is_active()
+		{
+			return apply_filters('dh_yith_wishlist_is_active', defined('YITH_WCWL'));
+		}
+
+		protected function _product_get_frist_thumbnail()
+		{
+			global $product, $post;
+			$image = '';
+			$thumbnail_size = 'shop_catalog';
+			if (version_compare(WOOCOMMERCE_VERSION, "2.0.0") >= 0) {
+				$attachment_ids = $product->get_gallery_image_ids();
+				$image_count = 0;
+				if ($attachment_ids) {
+					foreach ($attachment_ids as $attachment_id) {
+						if (get_post_meta($attachment_id, '_woocommerce_exclude_image'))
+							continue;
+
+						$image = wp_get_attachment_image($attachment_id, $thumbnail_size);
+
+						$image_count++;
+						if ($image_count == 1)
+							break;
+					}
+				}
+			} else {
+				$attachments = get_posts(
+					array(
+						'post_type' => 'attachment',
+						'numberposts' => -1,
+						'post_status' => null,
+						'post_parent' => $post->ID,
+						'post__not_in' => array(get_post_thumbnail_id()),
+						'post_mime_type' => 'image',
+						'orderby' => 'menu_order',
+						'order' => 'ASC'
+					)
+				);
+				$image_count = 0;
+				if ($attachments) {
+					foreach ($attachments as $attachment) {
+
+						if (get_post_meta($attachment->ID, '_woocommerce_exclude_image') == 1)
+							continue;
+
+						$image = wp_get_attachment_image($attachment->ID, $thumbnail_size);
+
+						$image_count++;
+
+						if ($image_count == 1)
+							break;
+					}
+				}
+			}
+			return $image;
+		}
+
 	}
-	return $content;
-}
-add_filter('elementor/widget/render_content', 'my_custom_elementor_woocommerce_product_categories_widget', 10, 2);
-
-class Custom_WC_Product_Categories_Widget extends WC_Widget_Product_Categories
-{
-
-	/**
-	 * Output widget.
-	 *
-	 * @see WP_Widget
-	 *
-	 * @param array $args     Arguments.
-	 * @param array $instance Widget instance.
-	 */
-	public function widget($args, $instance)
-	{
-		// Widget code goes here
-	}
-}
-
-function register_custom_wc_product_categories_widget()
-{
-	register_widget('Custom_WC_Product_Categories_Widget');
-}
-add_action('widgets_init', 'register_custom_wc_product_categories_widget');
-
-class My_Custom_Elementor_WC_Product_Categories_Widget extends \Elementor\Widget_Product_Categories
-{
-
-	/**
-	 * Get widget name.
-	 *
-	 * Retrieve Elementor widget name.
-	 *
-	 * @since 1.0.0
-	 * @access public
-	 *
-	 * @return string Widget name.
-	 */
-	public function get_name()
-	{
-		return 'my-custom-woocommerce-product-categories';
-	}
-
-	/**
-	 * Get widget title.
-	 *
-	 * Retrieve Elementor widget title.
-	 *
-	 * @since 1.0.0
-	 * @access public
-	 *
-	 * @return string Widget title.
-	 */
-	public function get_title()
-	{
-		return __('My Custom WooCommerce Product Categories', 'my-custom-plugin');
-	}
-
-	/**
-	 * Get widget icon.
-	 *
-	 * Retrieve Elementor widget icon.
-	 *
-	 * @since 1.0.0
-	 * @access public
-	 *
-	 * @return string Widget icon.
-	 */
-	public function get_icon()
-	{
-		return 'fa fa-folder';
-	}
-
-	/**
-	 * Get widget categories.
-	 *
-	 * Retrieve the list of categories the widget belongs to.
-	 *
-	 * @since 1.0.0
-	 * @access public
-	 *
-	 * @return array Widget categories.
-	 */
-	public function get_categories()
-	{
-		return ['woocommerce-elements'];
-	}
-
-	/**
-	 * Output widget.
-	 *
-	 * @since 1.0.0
-	 * @access public
-	 *
-	 * @param array $args     Arguments.
-	 * @param array $instance Widget instance.
-	 */
-	public function render($instance)
-	{
-		// Widget code goes here
-	}
-}
-
-// Register the widget
-function my_custom_elementor_wc_product_categories_widget()
-{
-	\Elementor\Plugin::instance()->widgets_manager->register_widget_type(new My_Custom_Elementor_WC_Product_Categories_Widget());
-}
-add_action('elementor/widgets/widgets_registered', 'my_custom_elementor_wc_product_categories_widget');
+	new WT_Woocommerce();
+endif;
